@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import { hot } from 'react-hot-loader';
 
 import { ExploreId, ExploreMode } from 'app/types/explore';
-import { DataSourceSelectItem, SelectOptionItem } from '@grafana/ui';
+import { DataSourceSelectItem, SelectOptionItem, DataQuery, Tooltip } from '@grafana/ui';
 import { RawTimeRange, TimeZone, TimeRange, LoadingState } from '@grafana/data';
 import { DataSourcePicker } from 'app/core/components/Select/DataSourcePicker';
 import { StoreState } from 'app/types/store';
@@ -16,7 +16,9 @@ import {
   changeRefreshInterval,
   changeMode,
 } from './state/actions';
+
 import { getTimeZone } from '../profile/state/selectors';
+import { getDashboardSrv } from '../dashboard/services/DashboardSrv';
 import ToggleButtonGroup, { ToggleButton } from 'app/core/components/ToggleButtonGroup/ToggleButtonGroup';
 import { ExploreTimeControls } from './ExploreTimeControls';
 
@@ -71,6 +73,8 @@ interface StateProps {
   selectedModeOption: SelectOptionItem<ExploreMode>;
   hasLiveOption: boolean;
   isLive: boolean;
+  originPanel: number;
+  queries: DataQuery[];
 }
 
 interface DispatchProps {
@@ -112,6 +116,23 @@ export class UnConnectedExploreToolbar extends PureComponent<Props, {}> {
     changeMode(exploreId, mode);
   };
 
+  saveQueryToPanel = async () => {
+    const { originPanel, queries } = this.props;
+
+    const dashboardSrv = getDashboardSrv();
+    const dash = dashboardSrv.getCurrent().getSaveModelClone();
+    const newPanels = dash.panels.map(panel => {
+      if (panel.id === originPanel) {
+        panel.targets = queries;
+      }
+
+      return panel;
+    });
+
+    const newDash = { panels: newPanels, ...dash };
+    return dashboardSrv.saveDashboard(undefined, newDash, false);
+  };
+
   render() {
     const {
       datasourceMissing,
@@ -130,7 +151,10 @@ export class UnConnectedExploreToolbar extends PureComponent<Props, {}> {
       selectedModeOption,
       hasLiveOption,
       isLive,
+      originPanel,
     } = this.props;
+
+    const originDashboardIsEditable = originPanel && getDashboardSrv().getCurrent().meta.canSave;
 
     return (
       <div className={splitted ? 'explore-toolbar splitted' : 'explore-toolbar'}>
@@ -214,6 +238,16 @@ export class UnConnectedExploreToolbar extends PureComponent<Props, {}> {
               />
             </div>
 
+            {originDashboardIsEditable && !splitted && (
+              <div className="explore-toolbar-content-item">
+                <Tooltip content={'Save query to panel'} placement="bottom">
+                  <button className="btn navbar-button" onClick={this.saveQueryToPanel}>
+                    <i className="fa fa-save" />
+                  </button>
+                </Tooltip>
+              </div>
+            )}
+
             <div className="explore-toolbar-content-item">
               <button className="btn navbar-button" onClick={this.onClearAll}>
                 Clear All
@@ -250,6 +284,8 @@ const mapStateToProps = (state: StoreState, { exploreId }: OwnProps): StateProps
     supportedModes,
     mode,
     isLive,
+    originPanel,
+    queries,
   } = exploreItem;
   const selectedDatasource = datasourceInstance
     ? exploreDatasources.find(datasource => datasource.name === datasourceInstance.name)
@@ -298,6 +334,8 @@ const mapStateToProps = (state: StoreState, { exploreId }: OwnProps): StateProps
     selectedModeOption,
     hasLiveOption,
     isLive,
+    originPanel,
+    queries,
   };
 };
 
