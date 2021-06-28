@@ -210,7 +210,7 @@
     "mousetrap-global-bind": "1.1.0",
     "nodemon": "1.18.10",
     "papaparse": "4.6.3",
-    "prismjs": "1.16.0",
+    "prismjs": "1.24.0",
     "prop-types": "15.7.2",
     "rc-cascader": "0.14.0",
     "react": "16.8.6",
